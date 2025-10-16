@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>精听分句播放器 · 学生在线版（教师授权显示原文）</title>
+<style>
+  :root{--bg:#0f172a;--panel:#111827;--text:#e5e7eb;--muted:#94a3b8;--border:#1f2937;--card:#0b1220;--accent:#3b82f6}
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+  header{position:sticky;top:0;z-index:10;padding:12px 14px;background:linear-gradient(180deg,#0f172a,rgba(15,23,42,.85));backdrop-filter:saturate(160%) blur(6px);border-bottom:1px solid var(--border)}
+  h1{margin:0;font-size:16px}
+  .muted{color:var(--muted);font-size:12px}
+  main{max-width:860px;margin:0 auto;padding:12px}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:12px}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  button,select{background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:8px 10px;font-size:14px}
+  button{cursor:pointer}
+  button.primary{background:linear-gradient(180deg,#2563eb,#1d4ed8);border-color:#1d4ed8}
+  .progress{height:8px;width:100%;background:var(--card);border-radius:999px;border:1px solid var(--border);overflow:hidden}
+  .bar{height:100%;width:0%;background:linear-gradient(90deg,#22c55e,#3b82f6)}
+  .list{max-height:50vh;overflow:auto;display:flex;flex-direction:column;gap:8px;margin-top:10px}
+  .item{display:flex;gap:8px;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px}
+  .item.active{outline:2px solid var(--accent)}
+  .item .left{display:flex;gap:10px;align-items:center}
+  .badge{color:#cbd5e1;font-size:12px}
+  #cloze{margin-top:10px;line-height:1.8;background:#0b1220;border:1px solid var(--border);border-radius:10px;padding:12px;min-height:64px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  @media (min-width:720px){ .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px} }
+  #authBox{margin-top:10px;padding:10px;background:#0b1220;border-radius:10px;display:flex;gap:10px;align-items:center;justify-content:space-between}
+</style>
+</head>
+<body>
+<header>
+  <h1>精听分句 · 学生在线版（教师授权）</h1>
+  <div class="muted" id="meta">资源加载中…</div>
+</header>
+
+<main>
+  <section class="panel">
+    <div class="row" style="justify-content:space-between">
+      <div>
+        <div>当前：<span id="nowLabel">—</span> <span class="muted" id="nowIdx"></span></div>
+        <div class="muted">起止：<span id="nowRange">—</span></div>
+      </div>
+      <div class="row">
+        <label class="muted">速度
+          <select id="rate">
+            <option value="0.7">0.7×</option>
+            <option value="0.85">0.85×</option>
+            <option value="1" selected>1.0×</option>
+            <option value="1.2">1.2×</option>
+            <option value="1.5">1.5×</option>
+            <option value="2">2.0×</option>
+          </select>
+        </label>
+        <label class="muted"><input id="loopOne" type="checkbox"> 单句循环</label>
+        <button id="reveal" class="ghost" disabled title="请教师授权后可用">显示原文</button>
+      </div>
+    </div>
+
+    <audio id="audio" controls style="width:100%;margin:10px 0 8px 0"></audio>
+    <div class="progress"><div id="bar" class="bar"></div></div>
+
+    <div id="cloze" aria-live="polite">句子加载中…</div>
+
+    <div class="controls" style="justify-content:center;margin-top:10px">
+      <button id="prev" class="ghost">← 上一句</button>
+      <button id="toggle" class="ghost">▶︎ 播放/暂停</button>
+      <button id="next" class="ghost">下一句 →</button>
+      <button id="repeat3" class="ghost">重复 3 次</button>
+      <label class="muted">挖空强度 <input id="level" type="range" min="0" max="100" value="40"></label>
+    </div>
+
+    <div id="authBox">
+      <div class="muted">教师授权码：<input id="authInput" type="password" placeholder="输入授权码" style="padding:6px;border-radius:6px;border:1px solid #1f2937;background:#1e293b;color:#e5e7eb;width:120px"></div>
+      <button id="authBtn" class="primary">提交</button>
+    </div>
+  </section>
+
+  <section class="panel" style="margin-top:12px">
+    <div class="row" style="justify-content:space-between;align-items:center"><strong>句子列表</strong><span class="muted" id="count">0 条</span></div>
+    <div id="list" class="list"></div>
+  </section>
+</main>
+
+<script>
+const AUTH_CODE = 'teacher2025'; // 教师可更改授权码
+let authPassed = false;
+const audio = document.getElementById('audio');
+const bar   = document.getElementById('bar');
+let segments=[],idx=-1,repeatLeft=0,reveal=false;
+function parseTime(s){if(typeof s==='number')return s;s=String(s).trim();if(!s)return 0;if(/^\d+(\.\d+)?$/.test(s))return parseFloat(s);const parts=s.split(':').map(parseFloat);if(parts.length===2){const[m,sec]=parts;return m*60+sec}if(parts.length===3){const[h,m,sec]=parts;return h*3600+m*60+sec}return 0;}
+function fmt(t){const h=Math.floor(t/3600);const m=Math.floor((t%3600)/60);const s=(t%60).toFixed(3).padStart(6,'0');return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s}`}
+function maskText(s, level){if(!s)return'';const ratio=Math.max(0,Math.min(1,level/100));return s.split(/(\s+)/).map(w=>{/\s+/.test(w)?w:w.split('').map((ch,i)=>/[^A-Za-z]/.test(ch)?ch:(i===0?ch:(Math.random()<ratio?'_':ch))).join('')}).join('');}
+(async function init(){const ASSETS={audio:'assets/OrangeT1_27.mp3',splits:'assets/splits.csv',transcript:'assets/transcript.csv'};audio.src=ASSETS.audio;const csv=await(await fetch(ASSETS.splits)).text();const lines=csv.split(/\r?\n/).filter(x=>x.trim());for(const line of lines){const c=line.split(',');if(c.length<3)continue;const s=parseTime(c[0]),e=parseTime(c[1]),l=c.slice(2).join(',').trim();if(e>s)segments.push({start:s,end:e,label:l,text:''});}try{const t=await(await fetch(ASSETS.transcript)).text();const map=new Map(t.split(/\r?\n/).map(l=>l.split(',')));for(const seg of segments){if(map.has(seg.label))seg.text=map.get(seg.label);}}catch{}renderList();loadIndex(0);})();
+function renderList(){const list=document.getElementById('list');list.innerHTML='';document.getElementById('count').textContent=`${segments.length} 条`;segments.forEach((seg,i)=>{const d=document.createElement('div');d.className='item'+(i===idx?' active':'');d.innerHTML=`<div class="left"><span class="badge">#${i+1}</span><div>${seg.label}<div class="muted" style="font-size:11px">${fmt(seg.start)} ~ ${fmt(seg.end)}</div></div></div><button class="ghost">播放</button>`;d.querySelector('button').addEventListener('click',()=>{loadIndex(i);play();});list.appendChild(d);});}
+function loadIndex(i){if(i<0||i>=segments.length)return;idx=i;repeatLeft=0;const s=segments[idx];audio.currentTime=s.start;document.getElementById('nowLabel').textContent=s.label;document.getElementById('nowIdx').textContent=`(${idx+1}/${segments.length})`;document.getElementById('nowRange').textContent=`${fmt(s.start)} ~ ${fmt(s.end)}`;renderCloze();[...document.querySelectorAll('.item')].forEach((el,j)=>el.classList.toggle('active',j===idx));}
+function renderCloze(){const s=segments[idx]||{};const level=parseInt(document.getElementById('level').value,10)||40;const text=reveal?(s.text||''):maskText(s.text||'',level);document.getElementById('cloze').textContent=text||'（此句未提供原文）';}
+function play(){audio.play();}function toggle(){audio.paused?audio.play():audio.pause();}function prev(){if(idx>0){loadIndex(idx-1);play();}}function next(){if(idx<segments.length-1){loadIndex(idx+1);play();}}
+document.getElementById('rate').addEventListener('change',e=>audio.playbackRate=parseFloat(e.target.value));document.getElementById('toggle').addEventListener('click',toggle);document.getElementById('prev').addEventListener('click',prev);document.getElementById('next').addEventListener('click',next);document.getElementById('repeat3').addEventListener('click',()=>{repeatLeft=3;play();});document.getElementById('level').addEventListener('input',renderCloze);
+document.getElementById('reveal').addEventListener('click',()=>{if(!authPassed){alert('请先获得教师授权');return;}reveal=!reveal;renderCloze();document.getElementById('reveal').textContent=reveal?'隐藏原文':'显示原文';});
+document.getElementById('authBtn').addEventListener('click',()=>{const v=document.getElementById('authInput').value.trim();if(v===AUTH_CODE){authPassed=true;document.getElementById('reveal').disabled=false;alert('✅ 授权成功，现在可以显示原文');}else{alert('❌ 授权码错误，请联系教师');}});
+audio.addEventListener('timeupdate',()=>{if(idx<0)return;const s=segments[idx];const pct=(audio.currentTime-s.start)/(s.end-s.start)*100;bar.style.width=Math.max(0,Math.min(100,pct))+'%';if(audio.currentTime>=s.end-0.01){if(document.getElementById('loopOne').checked){audio.currentTime=s.start;audio.play();return;}if(repeatLeft>1){repeatLeft--;audio.currentTime=s.start;audio.play();return;}repeatLeft=0;next();}});
+</script>
+</body>
+</html>

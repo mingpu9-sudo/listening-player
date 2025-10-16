@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>精听练习模板（本地 HTML 版）</title>
+  <style>
+    :root {
+      --bg: #0f172a;        /* slate-900 */
+      --panel: #111827;     /* gray-900 */
+      --muted: #94a3b8;     /* slate-400 */
+      --text: #e5e7eb;      /* gray-200 */
+      --accent: #22c55e;    /* green-500 */
+      --accent-2: #3b82f6;  /* blue-500 */
+      --danger: #ef4444;    /* red-500 */
+      --card: #0b1220;      /* slightly darker */
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--text); }
+    header { padding: 18px 20px; border-bottom: 1px solid #1f2937; display:flex; gap:12px; align-items:center; flex-wrap: wrap; }
+    header h1 { font-size: 18px; margin: 0 12px 0 0; font-weight: 700; }
+    .badge { background:#1e293b; color:#93c5fd; padding:4px 8px; border-radius:999px; font-size:12px; }
+    main { display:grid; grid-template-columns: 360px 1fr; gap: 16px; padding: 16px; }
+    @media (max-width: 960px){ main { grid-template-columns: 1fr; } }
+    .panel { background: var(--panel); border:1px solid #1f2937; border-radius:14px; padding:14px; }
+    .controls { display:flex; gap:10px; align-items:center; flex-wrap: wrap; }
+    button, select, input[type="number"], input[type="text"] { background:#0b1220; color:var(--text); border:1px solid #1f2937; border-radius:10px; padding:8px 10px; font-size:14px; }
+    button { cursor:pointer; }
+    button.primary { background: linear-gradient(180deg, #2563eb, #1d4ed8); border-color:#1d4ed8; }
+    button.success { background: linear-gradient(180deg, #16a34a, #15803d); border-color:#15803d; }
+    button.danger { background: linear-gradient(180deg, #ef4444, #b91c1c); border-color:#b91c1c; }
+    button.ghost { background:#0b1220; }
+    button:disabled { opacity:.6; cursor:not-allowed; }
+    .row { display:flex; gap:10px; align-items:center; margin:10px 0; flex-wrap: wrap; }
+    .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .audio-card { background: var(--card); border:1px solid #1f2937; border-radius:14px; padding:12px; }
+    .progress { height:8px; width:100%; background:#0b1220; border-radius:999px; overflow:hidden; border:1px solid #1f2937; }
+    .bar { height:100%; width:0%; background: linear-gradient(90deg, #22c55e, #3b82f6); }
+    .list { max-height: 60vh; overflow:auto; display:flex; flex-direction:column; gap:8px; }
+    .item { display:grid; grid-template-columns: 76px 1fr auto; gap:8px; align-items:center; padding:8px; border-radius:10px; border:1px solid #1f2937; background:#0b1220; }
+    .item.active { outline:2px solid var(--accent-2); }
+    .item input[type="text"] { width:100%; }
+    .muted { color: var(--muted); font-size: 12px; }
+    .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; background:#0b1220; border:1px solid #1f2937; padding:2px 6px; border-radius:6px; }
+    footer { padding:12px 16px; color:#9ca3af; text-align:center; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>精听练习模板</h1>
+    <span class="badge">本地离线 · 单文件 HTML</span>
+    <div style="flex:1"></div>
+    <span class="muted">快捷键：<span class="kbd">Space</span> 播放/暂停 · <span class="kbd">←/→</span> 上/下一句 · <span class="kbd">L</span> 单句循环 · <span class="kbd">A/D</span> 变速</span>
+  </header>
+
+  <main>
+    <!-- 左侧：列表与装载 -->
+    <section class="panel">
+      <div class="row"><strong>快速装载文件名</strong></div>
+      <div class="grid2">
+        <label>前缀 <input id="prefix" type="text" value="OrangeT1_"/></label>
+        <label>扩展名 <select id="ext"><option>mp3</option><option>m4a</option><option>wav</option><option>aac</option></select></label>
+      </div>
+      <div class="grid2">
+        <label>起始编号 <input id="start" type="number" value="1" min="1"/></label>
+        <label>结束编号 <input id="end" type="number" value="44" min="1"/></label>
+      </div>
+      <div class="row">
+        <label>位数补零 <input id="pad" type="number" value="2" min="1" max="4"/></label>
+        <button id="load" class="primary">生成播放列表</button>
+        <button id="clearList" class="ghost">清空</button>
+      </div>
+      <div class="row">
+        <input id="basePath" type="text" placeholder="可选：相对/子文件夹，例如 clips/" style="width:100%"/>
+      </div>
+      <hr style="border-color:#1f2937; opacity:.4"/>
+
+      <div class="row" style="justify-content:space-between; align-items:center;">
+        <strong>句子列表</strong>
+        <div class="muted" id="countInfo">0 条</div>
+      </div>
+      <div class="list" id="list"></div>
+    </section>
+
+    <!-- 右侧：播放器与工具 -->
+    <section class="panel">
+      <div class="audio-card">
+        <div class="row" style="justify-content:space-between;">
+          <div>
+            <div>当前：<span id="nowLabel">—</span> <span class="muted" id="nowIdx"></span></div>
+            <div class="muted" id="nowSrc">—</div>
+          </div>
+          <div class="row">
+            <label class="muted">速度</label>
+            <select id="rate">
+              <option value="0.6">0.6×</option>
+              <option value="0.8">0.8×</option>
+              <option value="1" selected>1.0×</option>
+              <option value="1.2">1.2×</option>
+              <option value="1.5">1.5×</option>
+              <option value="2">2.0×</option>
+            </select>
+            <label class="muted"><input id="autoNext" type="checkbox" checked/> 自动下一句</label>
+            <label class="muted"><input id="loopOne" type="checkbox"/> 单句循环 (L)</label>
+          </div>
+        </div>
+        <audio id="audio" controls style="width:100%; margin:10px 0 8px 0;"></audio>
+        <div class="progress"><div id="bar" class="bar"></div></div>
+        <div class="row" style="justify-content:center; margin-top:10px; gap:12px;">
+          <button id="prev" class="ghost">← 上一句</button>
+          <button id="play" class="success">▶︎ 播放 / 暂停</button>
+          <button id="next" class="ghost">下一句 →</button>
+          <button id="repeat3" class="ghost">重复3次</button>
+          <button id="exportCSV" class="ghost">导出听写 CSV</button>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:16px;">
+        <div style="font-weight:600; margin-bottom:6px;">当前句原文（可编辑）</div>
+        <textarea id="textArea" rows="6" style="width:100%; background:#0b1220; color:var(--text); border:1px solid #1f2937; border-radius:10px; padding:10px; font-size:14px; line-height:1.6;"></textarea>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    © 本地教学用模板 · 把本文件和音频放在同一文件夹即可使用
+  </footer>
+
+<script>
+  // State
+  let playlist = []; // {id, label, src, text}
+  let index = -1;
+  let repeatLeft = 0;
+
+  const $ = (sel) => document.querySelector(sel);
+  const listEl = $('#list');
+  const audio = $('#audio');
+  const bar = $('#bar');
+
+  // Build file name with padding
+  function pad(num, size){
+    let s = String(num);
+    while (s.length < size) s = '0' + s;
+    return s;
+  }
+
+  function buildPlaylist(){
+    const prefix = $('#prefix').value.trim();
+    const ext = $('#ext').value.trim();
+    const start = parseInt($('#start').value, 10) || 1;
+    const end = parseInt($('#end').value, 10) || start;
+    const padLen = Math.max(1, Math.min(4, parseInt($('#pad').value, 10) || 2));
+    const basePath = $('#basePath').value.trim();
+
+    const list = [];
+    for(let i=start;i<=end;i++){
+      const id = pad(i, padLen);
+      const filename = `${prefix}${id}.${ext}`;
+      const src = (basePath ? basePath.replace(/\\$/,'/') : '') + filename; // support subfolder e.g. clips/
+      list.push({ id, label: `${prefix}${id}`, src, text: '' });
+    }
+    setPlaylist(list);
+  }
+
+  function setPlaylist(list){
+    playlist = list;
+    index = 0;
+    renderList();
+    loadIndex(0);
+    $('#countInfo').textContent = `${playlist.length} 条`;
+  }
+
+  function renderList(){
+    listEl.innerHTML = '';
+    playlist.forEach((item, i) => {
+      const div = document.createElement('div');
+      div.className = 'item' + (i===index ? ' active' : '');
+      div.innerHTML = `
+        <span class="muted">#${item.id}</span>
+        <input type="text" placeholder="可在此填写该句原文/备注" value="${item.text.replace(/"/g,'&quot;')}" />
+        <button class="ghost">播放</button>
+      `;
+      const input = div.querySelector('input');
+      input.addEventListener('input', e => { item.text = e.target.value; if(i===index){ $('#textArea').value = item.text; }});
+      div.querySelector('button').addEventListener('click', () => { loadIndex(i); play(); });
+      div.addEventListener('click', (e) => { if(e.target.tagName!== 'INPUT' && e.target.tagName!=='BUTTON'){ loadIndex(i); }});
+      listEl.appendChild(div);
+    });
+  }
+
+  function loadIndex(i){
+    if(i<0 || i>=playlist.length) return;
+    index = i;
+    const item = playlist[index];
+    audio.src = item.src;
+    audio.currentTime = 0;
+    $('#nowLabel').textContent = item.label;
+    $('#nowSrc').textContent = item.src;
+    $('#nowIdx').textContent = `(${index+1}/${playlist.length})`;
+    $('#textArea').value = item.text || '';
+    [...document.querySelectorAll('.item')].forEach((el, j)=>{
+      el.classList.toggle('active', j===index);
+    });
+  }
+
+  function play(){ audio.play(); }
+  function togglePlay(){ audio.paused ? audio.play() : audio.pause(); }
+  function prev(){ if(index>0){ loadIndex(index-1); play(); } }
+  function next(){ if(index<playlist.length-1){ loadIndex(index+1); play(); } }
+
+  // Events
+  $('#load').addEventListener('click', buildPlaylist);
+  $('#clearList').addEventListener('click', ()=>{ playlist=[]; index=-1; renderList(); $('#countInfo').textContent='0 条'; $('#nowLabel').textContent='—'; $('#nowSrc').textContent='—'; $('#nowIdx').textContent=''; audio.removeAttribute('src'); bar.style.width='0%';});
+  $('#play').addEventListener('click', togglePlay);
+  $('#prev').addEventListener('click', prev);
+  $('#next').addEventListener('click', next);
+  $('#rate').addEventListener('change', e=>{ audio.playbackRate = parseFloat(e.target.value); });
+  $('#repeat3').addEventListener('click', ()=>{ repeatLeft = 3; play(); });
+  $('#textArea').addEventListener('input', e=>{ if(index>=0) playlist[index].text = e.target.value; renderList(); });
+
+  audio.addEventListener('timeupdate', ()=>{
+    if(!isFinite(audio.duration)) return;
+    const pct = audio.currentTime / audio.duration * 100;
+    bar.style.width = pct + '%';
+  });
+
+  audio.addEventListener('ended', ()=>{
+    if($('#loopOne').checked){
+      // 单句循环
+      audio.currentTime = 0;
+      audio.play();
+      return;
+    }
+    if(repeatLeft>1){ repeatLeft--; audio.currentTime=0; audio.play(); return; }
+    repeatLeft = 0;
+    if($('#autoNext').checked){ next(); }
+  });
+
+  // Hotkeys
+  window.addEventListener('keydown', (e)=>{
+    if (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) {
+      // 允许在输入框里打字，除非是我们指定的快捷键
+      if(e.code==='Space'){ e.preventDefault(); togglePlay(); }
+      return;
+    }
+    if(e.code==='Space'){ e.preventDefault(); togglePlay(); }
+    else if(e.code==='ArrowLeft'){ prev(); }
+    else if(e.code==='ArrowRight'){ next(); }
+    else if(e.key==='l' || e.key==='L'){ $('#loopOne').checked = !$('#loopOne').checked; }
+    else if(e.key==='a' || e.key==='A'){ audio.playbackRate = Math.max(0.5, Math.round((audio.playbackRate - 0.1)*10)/10); $('#rate').value = String(audio.playbackRate); }
+    else if(e.key==='d' || e.key==='D'){ audio.playbackRate = Math.min(2.0, Math.round((audio.playbackRate + 0.1)*10)/10); $('#rate').value = String(audio.playbackRate); }
+  });
+
+  // Export CSV (label,text)
+  $('#exportCSV').addEventListener('click', ()=>{
+    const rows = playlist.map(p=> `${JSON.stringify(p.label)},${JSON.stringify(p.text || '')}`);
+    const csv = `label,text\n` + rows.join('\n');
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'transcript.csv';
+    a.click();
+  });
+
+  // Default: try to build OrangeT1_01..44 mp3 in same folder
+  window.addEventListener('load', ()=>{
+    buildPlaylist();
+  });
+</script>
+</body>
+</html>
