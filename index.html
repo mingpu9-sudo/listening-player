@@ -2,42 +2,60 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-<title>精听分句播放器 · 学生在线版（教师授权显示原文）</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>精听分句播放器 · 完整整合版</title>
 <style>
-  :root{--bg:#0f172a;--panel:#111827;--text:#e5e7eb;--muted:#94a3b8;--border:#1f2937;--card:#0b1220;--accent:#3b82f6}
+  :root{--bg:#0f172a;--panel:#111827;--text:#e5e7eb;--muted:#94a3b8;--border:#1f2937;--card:#0b1220}
   *{box-sizing:border-box}
-  html,body{height:100%}
   body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
-  header{position:sticky;top:0;z-index:10;padding:12px 14px;background:linear-gradient(180deg,#0f172a,rgba(15,23,42,.85));backdrop-filter:saturate(160%) blur(6px);border-bottom:1px solid var(--border)}
-  h1{margin:0;font-size:16px}
+  header{padding:16px 18px;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  header h1{margin:0;font-size:18px}
   .muted{color:var(--muted);font-size:12px}
-  main{max-width:860px;margin:0 auto;padding:12px}
-  .panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:12px}
-  .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-  button,select{background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:8px 10px;font-size:14px}
+  main{display:grid;grid-template-columns:360px 1fr;gap:16px;padding:16px}
+  @media(max-width:960px){main{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0}
+  input[type=file],select,button{background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:8px 10px;font-size:14px}
   button{cursor:pointer}
   button.primary{background:linear-gradient(180deg,#2563eb,#1d4ed8);border-color:#1d4ed8}
+  button.ghost{background:var(--card)}
+  .list{max-height:60vh;overflow:auto;display:flex;flex-direction:column;gap:8px}
+  .item{display:grid;grid-template-columns:70px 1fr auto;gap:8px;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px}
+  .item.active{outline:2px solid #3b82f6}
   .progress{height:8px;width:100%;background:var(--card);border-radius:999px;border:1px solid var(--border);overflow:hidden}
   .bar{height:100%;width:0%;background:linear-gradient(90deg,#22c55e,#3b82f6)}
-  .list{max-height:50vh;overflow:auto;display:flex;flex-direction:column;gap:8px;margin-top:10px}
-  .item{display:flex;gap:8px;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px}
-  .item.active{outline:2px solid var(--accent)}
-  .item .left{display:flex;gap:10px;align-items:center}
-  .badge{color:#cbd5e1;font-size:12px}
-  #cloze{margin-top:10px;line-height:1.8;background:#0b1220;border:1px solid var(--border);border-radius:10px;padding:12px;min-height:64px}
-  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  @media (min-width:720px){ .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px} }
-  #authBox{margin-top:10px;padding:10px;background:#0b1220;border-radius:10px;display:flex;gap:10px;align-items:center;justify-content:space-between}
+  textarea{width:100%;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px;line-height:1.6}
+  .kbd{font-family:ui-monospace,Menlo,Consolas,monospace;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:2px 6px}
 </style>
 </head>
 <body>
 <header>
-  <h1>精听分句 · 学生在线版（教师授权）</h1>
-  <div class="muted" id="meta">资源加载中…</div>
+  <h1>精听分句播放器</h1>
+  <span class="muted">本地运行 · master 音频 + splits.csv（start,end,label） · transcript.csv（label,text 可选）</span>
+  <div style="flex:1"></div>
+  <span class="muted">快捷键：<span class="kbd">Space</span> 播放/暂停 · <span class="kbd">←/→</span> 上/下一句 · <span class="kbd">L</span> 单句循环 · <span class="kbd">A/D</span> 变速 · <span class="kbd">E</span> 导出当前</span>
 </header>
 
 <main>
+  <section class="panel">
+    <div class="row"><strong>1) 选择 master 音频</strong></div>
+    <input id="fileAudio" type="file" accept="audio/*,video/*"/>
+
+    <div class="row"><strong>2) 选择 splits.csv</strong> <span class="muted">三列：start,end,label（支持 00:01:12.345 / 01:12 / 72.345）</span></div>
+    <input id="fileCSV" type="file" accept=".csv,text/csv"/>
+
+    <div class="row"><button id="load" class="primary">载入</button><button id="clear" class="ghost">清空</button></div>
+
+    <hr style="border-color:#1f2937;opacity:.4"/>
+    <div class="row"><strong>3) 选择 transcript.csv（可选：label,text）</strong></div>
+    <input id="fileTXT" type="file" accept=".csv,text/csv"/>
+    <div class="row"><button id="loadTxt" class="ghost">载入脚本→填充每句原文</button></div>
+
+    <hr style="border-color:#1f2937;opacity:.4"/>
+    <div class="row" style="justify-content:space-between;align-items:center"><strong>句子列表</strong><span class="muted" id="count">0 条</span></div>
+    <div id="list" class="list"></div>
+  </section>
+
   <section class="panel">
     <div class="row" style="justify-content:space-between">
       <div>
@@ -55,54 +73,125 @@
             <option value="2">2.0×</option>
           </select>
         </label>
-        <label class="muted"><input id="loopOne" type="checkbox"> 单句循环</label>
-        <button id="reveal" class="ghost" disabled title="请教师授权后可用">显示原文</button>
+        <label class="muted"><input id="loopOne" type="checkbox"> 单句循环 (L)</label>
+        <label class="muted"><input id="autoNext" type="checkbox" checked> 自动下一句</label>
+        <label class="muted"><input id="studentMode" type="checkbox"> 学生模式（挖空）</label>
+        <button id="revealBtn" class="ghost">显示原文</button>
+        <button id="printWS" class="ghost">打印练习册</button>
       </div>
     </div>
 
     <audio id="audio" controls style="width:100%;margin:10px 0 8px 0"></audio>
     <div class="progress"><div id="bar" class="bar"></div></div>
 
-    <div id="cloze" aria-live="polite">句子加载中…</div>
-
-    <div class="controls" style="justify-content:center;margin-top:10px">
+    <div class="row" style="justify-content:center;margin-top:10px;gap:12px">
       <button id="prev" class="ghost">← 上一句</button>
       <button id="toggle" class="ghost">▶︎ 播放/暂停</button>
       <button id="next" class="ghost">下一句 →</button>
       <button id="repeat3" class="ghost">重复 3 次</button>
-      <label class="muted">挖空强度 <input id="level" type="range" min="0" max="100" value="40"></label>
+      <button id="exportClip" class="ghost">导出当前句 (WAV)</button>
+      <button id="exportAll" class="ghost">批量导出全部 (WAV)</button>
+      <button id="exportCSV" class="ghost">导出空白听写表</button>
     </div>
 
-    <div id="authBox">
-      <div class="muted">教师授权码：<input id="authInput" type="password" placeholder="输入授权码" style="padding:6px;border-radius:6px;border:1px solid #1f2937;background:#1e293b;color:#e5e7eb;width:120px"></div>
-      <button id="authBtn" class="primary">提交</button>
+    <div class="panel" id="teacherPanel" style="margin-top:16px;">
+      <div style="font-weight:600;margin-bottom:6px">当前句原文（教师编辑）</div>
+      <textarea id="text" rows="6" placeholder="在这里写当前句的脚本/关键词/易错点"></textarea>
     </div>
-  </section>
 
-  <section class="panel" style="margin-top:12px">
-    <div class="row" style="justify-content:space-between;align-items:center"><strong>句子列表</strong><span class="muted" id="count">0 条</span></div>
-    <div id="list" class="list"></div>
+    <div class="panel" id="clozePanel" style="margin-top:12px; display:none;">
+      <div style="font-weight:600;margin-bottom:6px">学生视图（挖空）</div>
+      <div class="muted">挖空强度：<input id="clozeLevel" type="range" min="0" max="100" value="40">（越大挖空越多）</div>
+      <div id="clozeText" style="margin-top:8px;line-height:1.8;background:#0b1220;border:1px solid #1f2937;border-radius:10px;padding:10px;"></div>
+    </div>
   </section>
 </main>
 
 <script>
-const AUTH_CODE = 'teacher2025'; // 教师可更改授权码
-let authPassed = false;
+let segments = []; // {start,end,label,text}
+let idx = -1;
+let repeatLeft = 0;
+let decodedBuffer = null; // for WAV export
+let reveal = false; // 学生模式是否显示原文
+
 const audio = document.getElementById('audio');
-const bar   = document.getElementById('bar');
-let segments=[],idx=-1,repeatLeft=0,reveal=false;
-function parseTime(s){if(typeof s==='number')return s;s=String(s).trim();if(!s)return 0;if(/^\d+(\.\d+)?$/.test(s))return parseFloat(s);const parts=s.split(':').map(parseFloat);if(parts.length===2){const[m,sec]=parts;return m*60+sec}if(parts.length===3){const[h,m,sec]=parts;return h*3600+m*60+sec}return 0;}
+const bar = document.getElementById('bar');
+
+function parseTime(s){
+  if(typeof s === 'number') return s; s=String(s).trim(); if(!s) return 0;
+  if(/^\d+(\.\d+)?$/.test(s)) return parseFloat(s);
+  const parts = s.split(':').map(parseFloat);
+  if(parts.length===2){const [m,sec]=parts;return m*60+sec}
+  if(parts.length===3){const [h,m,sec]=parts;return h*3600+m*60+sec}
+  return 0;
+}
 function fmt(t){const h=Math.floor(t/3600);const m=Math.floor((t%3600)/60);const s=(t%60).toFixed(3).padStart(6,'0');return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s}`}
-function maskText(s, level){if(!s)return'';const ratio=Math.max(0,Math.min(1,level/100));return s.split(/(\s+)/).map(w=>{/\s+/.test(w)?w:w.split('').map((ch,i)=>/[^A-Za-z]/.test(ch)?ch:(i===0?ch:(Math.random()<ratio?'_':ch))).join('')}).join('');}
-(async function init(){const ASSETS={audio:'assets/OrangeT1_27.mp3',splits:'assets/splits.csv',transcript:'assets/transcript.csv'};audio.src=ASSETS.audio;const csv=await(await fetch(ASSETS.splits)).text();const lines=csv.split(/\r?\n/).filter(x=>x.trim());for(const line of lines){const c=line.split(',');if(c.length<3)continue;const s=parseTime(c[0]),e=parseTime(c[1]),l=c.slice(2).join(',').trim();if(e>s)segments.push({start:s,end:e,label:l,text:''});}try{const t=await(await fetch(ASSETS.transcript)).text();const map=new Map(t.split(/\r?\n/).map(l=>l.split(',')));for(const seg of segments){if(map.has(seg.label))seg.text=map.get(seg.label);}}catch{}renderList();loadIndex(0);})();
-function renderList(){const list=document.getElementById('list');list.innerHTML='';document.getElementById('count').textContent=`${segments.length} 条`;segments.forEach((seg,i)=>{const d=document.createElement('div');d.className='item'+(i===idx?' active':'');d.innerHTML=`<div class="left"><span class="badge">#${i+1}</span><div>${seg.label}<div class="muted" style="font-size:11px">${fmt(seg.start)} ~ ${fmt(seg.end)}</div></div></div><button class="ghost">播放</button>`;d.querySelector('button').addEventListener('click',()=>{loadIndex(i);play();});list.appendChild(d);});}
-function loadIndex(i){if(i<0||i>=segments.length)return;idx=i;repeatLeft=0;const s=segments[idx];audio.currentTime=s.start;document.getElementById('nowLabel').textContent=s.label;document.getElementById('nowIdx').textContent=`(${idx+1}/${segments.length})`;document.getElementById('nowRange').textContent=`${fmt(s.start)} ~ ${fmt(s.end)}`;renderCloze();[...document.querySelectorAll('.item')].forEach((el,j)=>el.classList.toggle('active',j===idx));}
-function renderCloze(){const s=segments[idx]||{};const level=parseInt(document.getElementById('level').value,10)||40;const text=reveal?(s.text||''):maskText(s.text||'',level);document.getElementById('cloze').textContent=text||'（此句未提供原文）';}
-function play(){audio.play();}function toggle(){audio.paused?audio.play():audio.pause();}function prev(){if(idx>0){loadIndex(idx-1);play();}}function next(){if(idx<segments.length-1){loadIndex(idx+1);play();}}
-document.getElementById('rate').addEventListener('change',e=>audio.playbackRate=parseFloat(e.target.value));document.getElementById('toggle').addEventListener('click',toggle);document.getElementById('prev').addEventListener('click',prev);document.getElementById('next').addEventListener('click',next);document.getElementById('repeat3').addEventListener('click',()=>{repeatLeft=3;play();});document.getElementById('level').addEventListener('input',renderCloze);
-document.getElementById('reveal').addEventListener('click',()=>{if(!authPassed){alert('请先获得教师授权');return;}reveal=!reveal;renderCloze();document.getElementById('reveal').textContent=reveal?'隐藏原文':'显示原文';});
-document.getElementById('authBtn').addEventListener('click',()=>{const v=document.getElementById('authInput').value.trim();if(v===AUTH_CODE){authPassed=true;document.getElementById('reveal').disabled=false;alert('✅ 授权成功，现在可以显示原文');}else{alert('❌ 授权码错误，请联系教师');}});
-audio.addEventListener('timeupdate',()=>{if(idx<0)return;const s=segments[idx];const pct=(audio.currentTime-s.start)/(s.end-s.start)*100;bar.style.width=Math.max(0,Math.min(100,pct))+'%';if(audio.currentTime>=s.end-0.01){if(document.getElementById('loopOne').checked){audio.currentTime=s.start;audio.play();return;}if(repeatLeft>1){repeatLeft--;audio.currentTime=s.start;audio.play();return;}repeatLeft=0;next();}});
+
+async function loadFiles(){
+  const a=document.getElementById('fileAudio').files[0];
+  const c=document.getElementById('fileCSV').files[0];
+  if(!a||!c){alert('请选择 master 音频与 splits.csv');return}
+  audio.src=URL.createObjectURL(a);
+  // decode for WAV export
+  try{const arr=await a.arrayBuffer(); const AC=window.AudioContext||window.webkitAudioContext; const ctx=new AC(); decodedBuffer=await ctx.decodeAudioData(arr.slice(0)); ctx.close&&ctx.close();}catch(e){console.warn('Decode failed',e); decodedBuffer=null}
+  const text=await c.text();
+  const lines=text.split(/\r?\n/).filter(x=>x.trim());
+  const out=[];
+  for(const line of lines){const cells=line.split(','); if(cells.length<3) continue; const start=parseTime(cells[0]); const end=parseTime(cells[1]); const label=cells.slice(2).join(',').replace(/^\"|\"$/g,'').trim(); if(end>start) out.push({start,end,label,text:''});}
+  segments=out; idx=0; renderList(); loadIndex(0);
+}
+
+async function loadTranscript(){
+  const f=document.getElementById('fileTXT').files[0]; if(!f){alert('请选择 transcript.csv');return}
+  const t=await f.text(); const lines=t.split(/\r?\n/).filter(x=>x.trim()); const map=new Map();
+  const head=lines[0].toLowerCase(); let sIdx=0; if(head.includes('label')&&head.includes('text')) sIdx=1;
+  for(let i=sIdx;i<lines.length;i++){const arr=lines[i].split(','); if(arr.length<2) continue; const label=arr[0].replace(/^\"|\"$/g,'').trim(); const text=arr.slice(1).join(',').replace(/^\"|\"$/g,'').trim(); map.set(label,text)}
+  let filled=0; for(const seg of segments){if(map.has(seg.label)){seg.text=map.get(seg.label); filled++;}}
+  renderList(); loadIndex(idx>=0?idx:0); alert('已填充原文：'+filled+' 条');
+}
+
+function renderList(){
+  const list=document.getElementById('list'); list.innerHTML=''; document.getElementById('count').textContent=`${segments.length} 条`;
+  segments.forEach((seg,i)=>{const div=document.createElement('div'); div.className='item'+(i===idx?' active':''); div.innerHTML=`<span class="muted">#${String(i+1).padStart(2,'0')}</span><div>${seg.label} <span class="muted">(${fmt(seg.start)} ~ ${fmt(seg.end)})</span></div><button class="ghost">播放</button>`; div.querySelector('button').addEventListener('click',()=>{loadIndex(i); play();}); div.addEventListener('click',e=>{if(e.target.tagName!=='BUTTON'){loadIndex(i);}}); list.appendChild(div);});
+}
+
+function loadIndex(i){ if(i<0||i>=segments.length) return; idx=i; repeatLeft=0; const seg=segments[idx]; audio.currentTime=seg.start; document.getElementById('nowLabel').textContent=seg.label; document.getElementById('nowIdx').textContent=`(${idx+1}/${segments.length})`; document.getElementById('nowRange').textContent=`${fmt(seg.start)} ~ ${fmt(seg.end)}`; document.getElementById('text').value=seg.text||''; [...document.querySelectorAll('.item')].forEach((el,j)=>el.classList.toggle('active',j===idx)); renderCloze(); }
+
+function play(){audio.play()} function toggle(){audio.paused?audio.play():audio.pause()} function prev(){if(idx>0){loadIndex(idx-1); play();}} function next(){if(idx<segments.length-1){loadIndex(idx+1); play();}}
+
+document.getElementById('load').addEventListener('click', loadFiles);
+document.getElementById('clear').addEventListener('click', ()=>{segments=[]; idx=-1; renderList(); audio.removeAttribute('src'); bar.style.width='0%'; document.getElementById('nowLabel').textContent='—'; document.getElementById('nowIdx').textContent=''; document.getElementById('nowRange').textContent='—';});
+document.getElementById('rate').addEventListener('change', e=>{ audio.playbackRate=parseFloat(e.target.value); });
+document.getElementById('toggle').addEventListener('click', toggle);
+document.getElementById('prev').addEventListener('click', prev);
+document.getElementById('next').addEventListener('click', next);
+document.getElementById('repeat3').addEventListener('click', ()=>{ repeatLeft=3; play(); });
+document.getElementById('text').addEventListener('input', e=>{ if(idx>=0) segments[idx].text=e.target.value; });
+document.getElementById('loadTxt').addEventListener('click', loadTranscript);
+
+audio.addEventListener('timeupdate', ()=>{ if(idx<0) return; const seg=segments[idx]; const pct=(audio.currentTime-seg.start)/(seg.end-seg.start)*100; bar.style.width=Math.max(0,Math.min(100,pct))+'%'; if(audio.currentTime>=seg.end-0.01){ if(document.getElementById('loopOne').checked){ audio.currentTime=seg.start; audio.play(); return;} if(repeatLeft>1){repeatLeft--; audio.currentTime=seg.start; audio.play(); return;} repeatLeft=0; if(document.getElementById('autoNext').checked){ next(); } } });
+
+// 学生模式：挖空/显示原文
+function maskText(s, level){ if(!s) return ''; const ratio=Math.max(0,Math.min(1,level/100)); return s.split(/(\s+)/).map(w=>{ if(/\s+/.test(w)) return w; const letters=[...w]; let alpha=letters.some(ch=>/[A-Za-z]/.test(ch)); if(!alpha) return w; return letters.map((ch,i)=>{ if(/[^A-Za-z]/.test(ch)) return ch; if(i===0) return ch; return Math.random()<ratio?'_':ch; }).join(''); }).join(''); }
+function renderCloze(){ const panel=document.getElementById('clozePanel'); const teacher=document.getElementById('teacherPanel'); const level=parseInt(document.getElementById('clozeLevel').value,10)||40; if(document.getElementById('studentMode').checked){ panel.style.display=''; teacher.style.display='none'; const seg=segments[idx]||{}; const content=reveal?(seg.text||''):maskText(seg.text||'', level); document.getElementById('clozeText').textContent=content||'（此句未填写原文）'; document.getElementById('revealBtn').textContent=reveal?'隐藏原文':'显示原文'; } else { panel.style.display='none'; teacher.style.display=''; } }
+document.getElementById('studentMode').addEventListener('change', renderCloze); document.getElementById('clozeLevel').addEventListener('input', renderCloze); document.getElementById('revealBtn').addEventListener('click', ()=>{ reveal=!reveal; renderCloze(); });
+
+// 导出当前句 / 全部句（WAV）
+function floatTo16BitPCM(float32){ const out=new Int16Array(float32.length); for(let i=0;i<float32.length;i++){ let s=Math.max(-1,Math.min(1,float32[i])); out[i]=s<0?s*0x8000:s*0x7FFF; } return out; }
+function encodeWAV(interleaved, sampleRate, numChannels){ const bytesPerSample=2; const blockAlign=numChannels*bytesPerSample; const buffer=new ArrayBuffer(44+interleaved.length*bytesPerSample); const view=new DataView(buffer); let o=0; const w8=v=>{view.setUint8(o++,v)}; const w32=v=>{view.setUint32(o,v,true); o+=4}; const w16=v=>{view.setUint16(o,v,true); o+=2}; 'RIFF'.split('').forEach(ch=>w8(ch.charCodeAt(0))); w32(36+interleaved.length*bytesPerSample); 'WAVEfmt '.split('').forEach(ch=>w8(ch.charCodeAt(0))); w32(16); w16(1); w16(numChannels); w32(sampleRate); w32(sampleRate*blockAlign); w16(blockAlign); w16(8*bytesPerSample); 'data'.split('').forEach(ch=>w8(ch.charCodeAt(0))); w32(interleaved.length*bytesPerSample); const pcm=floatTo16BitPCM(interleaved); for(let i=0;i<pcm.length;i++){ view.setInt16(o, pcm[i], true); o+=2;} return new Blob([view], {type:'audio/wav'}); }
+function sliceToWav(buffer, startSec, endSec){ const sr=buffer.sampleRate; const ch=buffer.numberOfChannels; const a=Math.max(0,Math.floor(startSec*sr)); const b=Math.min(buffer.length, Math.floor(endSec*sr)); const frames=Math.max(0,b-a); if(frames<=0) return null; const channels=[]; for(let c=0;c<ch;c++){ const data=buffer.getChannelData(c).subarray(a,b); channels.push(data); } const interleaved=new Float32Array(frames*ch); for(let i=0;i<frames;i++){ for(let c=0;c<ch;c++){ interleaved[i*ch+c]=channels[c][i]||0; } } return encodeWAV(interleaved, sr, ch); }
+function downloadBlob(blob, filename){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),5000); }
+function exportCurrent(){ if(!decodedBuffer){ alert('当前浏览器未完成音频解码，无法导出。请重新载入文件后再试。'); return; } if(idx<0){ alert('请先载入并选择一个句子'); return; } const seg=segments[idx]; const wav=sliceToWav(decodedBuffer, seg.start, seg.end); if(!wav){ alert('导出失败：切片为空'); return; } downloadBlob(wav, `${seg.label}.wav`); }
+function exportAll(){ if(!decodedBuffer){ alert('当前浏览器未完成音频解码，无法导出。请重新载入文件后再试。'); return; } if(!segments.length){ alert('请先载入 CSV'); return; } if(segments.length>80&&!confirm('将连续下载 '+segments.length+' 个文件，可能触发浏览器拦截。继续吗？')) return; for(const seg of segments){ const wav=sliceToWav(decodedBuffer, seg.start, seg.end); if(wav) downloadBlob(wav, `${seg.label}.wav`); } }
+document.getElementById('exportClip').addEventListener('click', exportCurrent); document.getElementById('exportAll').addEventListener('click', exportAll); window.addEventListener('keydown', e=>{ if(e.key==='e'||e.key==='E'){ exportCurrent(); } });
+
+// 导出空白听写表（以 label 为行，answer 留空）
+document.getElementById('exportCSV').addEventListener('click', ()=>{ if(!segments.length){ alert('请先载入 CSV'); return; } const rows=segments.map(s=>`${s.label},`); const csv='label,answer\n'+rows.join('\n'); const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='dictation_blank.csv'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),3000); });
+
+// 打印练习册（挖空 + 首字母提示 + 答案）
+function buildWorksheet(ratio, showHint=true){ ratio=ratio??0.5; return segments.map((seg,i)=>{ const txt=(seg.text||'').trim(); const masked=maskText(txt, ratio*100); const hint=showHint? txt.split(/\s+/).map(w=>w? w[0].replace(/[^A-Za-z]/g,''): '').filter(Boolean).join(' ') : ''; return {no:i+1,label:seg.label,masked,answer:txt,hint}; }); }
+function printWorksheet(){ if(!segments.length){ alert('请先载入音频与 splits.csv'); return; } const ratio=0.5; const rows=buildWorksheet(ratio,true); const w=window.open('','_blank'); const style=`<style>body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,PingFang SC,Helvetica Neue,Arial;margin:24px} h1{font-size:18px;margin:0 0 12px 0} .muted{color:#6b7280;font-size:12px} table{width:100%;border-collapse:collapse} th,td{border:1px solid #e5e7eb;padding:8px;vertical-align:top} th{background:#f3f4f6} @media print{button{display:none}}</style>`; const head=`<h1>精听练习册（挖空）</h1><div class=muted>共 ${rows.length} 句 · 提示为各词首字母</div><hr/>`; const thead='<tr><th style="width:56px">#</th><th>题目（挖空）</th><th style="width:180px">提示</th><th style="width:260px">答案</th></tr>'; const body=rows.map(r=>`<tr><td>${r.no}</td><td>${r.masked||'<em>（未填原文）</em>'}</td><td>${r.hint}</td><td>${r.answer}</td></tr>`).join(''); w.document.write(`${style}${head}<table>${thead}${body}</table><br/><button onclick="window.print()">打印/导出 PDF</button>`); w.document.close(); w.focus(); }
+document.getElementById('printWS').addEventListener('click', printWorksheet);
 </script>
 </body>
 </html>
